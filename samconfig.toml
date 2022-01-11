@@ -1,0 +1,12 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "open-c-lifs"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-r5t2pyu6rm0j"
+s3_prefix = "open-c-lifs"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+image_repositories = []
