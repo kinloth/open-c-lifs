@@ -23,6 +23,9 @@ Resources:
           Properties:
             Path: /hello
             Method: post
+        Policies:
+          - S3WritePolicy:
+              BucketName: "open-c-lifs-models"
 
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
