@@ -1,0 +1,10 @@
+{
+    "sample_1": {
+        "class": "soil",
+        "conf": 89.2
+    },
+    "sample_2": {
+        "class": "soil",
+        "conf": 91.3
+    }
+}

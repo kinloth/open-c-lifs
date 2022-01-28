@@ -1,0 +1,21 @@
+{
+    "model_name": "model_xyz",
+    "wavelenght": [123, 456, 789],
+    "samples": {
+        "sample_1": {
+            "class": "soil",
+            "counts": [122.111, 111.22]
+
+        },
+        "sample_2": {
+            "class": "soil",
+            "counts": [122.111, 111.22]
+
+        },
+        "sample_3": {
+            "class": "soil",
+            "counts": [122.111, 111.22]
+
+        }
+    }
+}
