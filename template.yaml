@@ -1,42 +1,76 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: >
-  open-c-lifs
-
-  Sample SAM Template for open-c-lifs
-
-# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
-Globals:
-  Function:
-    Timeout: 3
+Description: OpenC-LIFS API
 
 Resources:
-  HelloWorldFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+  # ---- Storage ----
+
+  ModelBucket:
+    Type: AWS::S3::Bucket
     Properties:
-      CodeUri: src/hello_world/
+      BucketName: "openc-lifs"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Function: !GetAtt ModelFunction.Arn
+            Event: s3:ObjectCreated:Put
+
+  ModelBucketLambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:invokeFunction
+      Principal: s3.amazonaws.com
+      FunctionName: !GetAtt ModelFunction.Arn
+      SourceArn: !GetAtt ModelBucket.Arn
+
+  # ---- HTTP API ----
+
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: dev
+      Description: OpenC-LIFS API
+
+  # ---- Functions ----
+
+  NewModelFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/apigateway/new_model
+      Handler: main
+      Runtime: go1.x
+      Events:
+        NewModel:
+          Type: Api
+          Properties:
+            Path: /model
+            Method: post
+            RestApiId: !Ref Api
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref ModelBucket
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref ModelBucket
+          SERVER_HOST: "localhost"
+
+  ModelFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/s3/open-c-lifs/object_created/new_model
       Handler: app.lambda_handler
       Runtime: python3.8
-      Events:
-        HelloWorld:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-          Properties:
-            Path: /hello
-            Method: post
-        Policies:
-          - S3WritePolicy:
-              BucketName: "open-c-lifs-models"
-
-Outputs:
-  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
-  # Find out more about other implicit resources you can reference within SAM
-  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  HelloWorldApi:
-    Description: "API Gateway endpoint URL for Prod stage for Hello World function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
-  HelloWorldFunction:
-    Description: "Hello World Lambda Function ARN"
-    Value: !GetAtt HelloWorldFunction.Arn
-  HelloWorldFunctionIamRole:
-    Description: "Implicit IAM Role created for Hello World function"
-    Value: !GetAtt HelloWorldFunctionRole.Arn
+      Policies:
+        - S3ReadPolicy:
+            BucketName: "openc-lifs"
+      Environment:
+        Variables:
+          BUCKET_NAME: "openc-lifs"
