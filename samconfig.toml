@@ -1,12 +1,12 @@
 version = 0.1
-[default]
-[default.deploy]
-[default.deploy.parameters]
-stack_name = "open-c-lifs"
-s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-r5t2pyu6rm0j"
-s3_prefix = "open-c-lifs"
+
+[production]
+[production.deploy]
+[production.deploy.parameters]
+stack_name = "openc-lifs"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-yyyyizs5r6ne"
+s3_prefix = "openc-lifs"
 region = "us-east-1"
-confirm_changeset = false
-capabilities = "CAPABILITY_IAM"
-disable_rollback = false
+capabilities = "CAPABILITY_AUTO_EXPAND CAPABILITY_IAM"
+parameter_overrides = "Environment=\"PRODUCTION\""
 image_repositories = []
