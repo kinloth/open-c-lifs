@@ -2,13 +2,71 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: OpenC-LIFS API
 
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues:
+      - PRODUCTION
+
+Mappings:
+  Environment:
+    PRODUCTION:
+      DomainName: ultraocr.apis.nuveo.ai
+      ModelStorageBucketName: openc-lifs
+
 Resources:
+  # ---- Security ----
+
+  WebAcl:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      DefaultAction:
+        Allow: {}
+      Name: openc-lifs
+      Rules:
+        - Name: AWSManagedRulesAmazonIpRateBased
+          Action:
+            Block: {}
+          Priority: 1
+          Statement:
+            RateBasedStatement:
+              AggregateKeyType: IP
+              Limit: 500
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: False
+            MetricName: openc-lifs-waf-AWSManagedRulesAmazonIpRateBased
+            SampledRequestsEnabled: False
+        - Name: AWSManagedRulesAmazonIpReputationList
+          OverrideAction:
+            None: {}
+          Priority: 2
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesAmazonIpReputationList
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: False
+            MetricName: openc-lifs-waf-AWSManagedRulesAmazonIpReputationList
+            SampledRequestsEnabled: False
+      Scope: REGIONAL
+      VisibilityConfig:
+        CloudWatchMetricsEnabled: False
+        MetricName: openc-lifs-waf
+        SampledRequestsEnabled: False
+
+  WebAclAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    Properties:
+      ResourceArn: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}::/restapis/${Api}/stages/production
+      WebACLArn: !GetAtt WebAcl.Arn
+
+
   # ---- Storage ----
 
   ModelBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: "openc-lifs"
+      BucketName: !FindInMap [Environment, !Ref Environment, ModelStorageBucketName]
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -31,12 +89,12 @@ Resources:
       FunctionName: !GetAtt ModelFunction.Arn
       SourceArn: !GetAtt ModelBucket.Arn
 
-  # ---- HTTP API ----
+  # ---- Rest API ----
 
   Api:
     Type: AWS::Serverless::Api
     Properties:
-      StageName: dev
+      StageName: production
       Description: OpenC-LIFS API
 
   # ---- Functions ----
@@ -52,7 +110,7 @@ Resources:
           Type: Api
           Properties:
             Path: /model
-            Method: post
+            Method: POST
             RestApiId: !Ref Api
       Policies:
         - S3WritePolicy:
@@ -65,12 +123,9 @@ Resources:
   ModelFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: lambdas/s3/open-c-lifs/object_created/new_model
+      CodeUri: lambdas/s3/openc-lifs/object_created/new_model
       Handler: app.lambda_handler
       Runtime: python3.8
       Policies:
         - S3ReadPolicy:
-            BucketName: "openc-lifs"
-      Environment:
-        Variables:
-          BUCKET_NAME: "openc-lifs"
+            BucketName: !FindInMap [Environment, !Ref Environment, ModelStorageBucketName]
