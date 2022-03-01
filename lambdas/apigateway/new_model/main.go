@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	// local
-	"github.com/kinloth/open-c-lifs/apigateway/new_model/handler"
+	"github.com/kinloth/openc-lifs/apigateway/new_model/handler"
 )
 
 func main() {

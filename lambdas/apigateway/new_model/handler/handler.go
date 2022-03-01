@@ -58,7 +58,7 @@ func (h handler) putObject(ctx context.Context, body *Body, id string) error {
 }
 
 func (h handler) getURL(action, id string) string {
-	return fmt.Sprintf("https://%s/open-c-lifs/models/%s/%s", h.host, id, action)
+	return fmt.Sprintf("https://%s/openc-lifs/models/%s/%s", h.host, id, action)
 }
 
 func (h handler) getSuccessResponse(id, name string) (events.APIGatewayProxyResponse, error) {
