@@ -8,7 +8,7 @@ import (
 )
 
 type IHandler interface {
-	Handle(context.Context, events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error)
+	Handle(context.Context, events.APIGatewayProxyRequest) (events.APIGatewayV2HTTPResponse, error)
 }
 
 type handler struct {

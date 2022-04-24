@@ -61,7 +61,7 @@ func (h handler) getURL(action, id string) string {
 	return fmt.Sprintf("https://%s/openc-lifs/models/%s/%s", h.host, id, action)
 }
 
-func (h handler) getSuccessResponse(id, name string) (events.APIGatewayProxyResponse, error) {
+func (h handler) getSuccessResponse(id, name string) (events.APIGatewayV2HTTPResponse, error) {
 	response := Response{
 		Model: model{
 			ID:   id,
@@ -78,13 +78,16 @@ func (h handler) getSuccessResponse(id, name string) (events.APIGatewayProxyResp
 		return genResponse(err.Error(), http.StatusInternalServerError)
 	}
 
-	return events.APIGatewayProxyResponse{
+	return events.APIGatewayV2HTTPResponse{
 		Body:       string(data),
 		StatusCode: http.StatusAccepted,
+		Headers: map[string]string{
+			"Content-Type": "application/json",
+		},
 	}, nil
 }
 
-func (h handler) Handle(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func (h handler) Handle(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayV2HTTPResponse, error) {
 	in, err := formatBody(request.Body)
 	if err != nil {
 		return genResponse(err.Error(), http.StatusBadRequest)

@@ -11,54 +11,71 @@ Parameters:
 Mappings:
   Environment:
     PRODUCTION:
-      DomainName: ultraocr.apis.nuveo.ai
+      DomainName: kimp.com.br
+      SubDomainName: openc-lifs.kimp.com.br
       ModelStorageBucketName: openc-lifs
 
 Resources:
   # ---- Security ----
 
-  WebAcl:
-    Type: AWS::WAFv2::WebACL
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
     Properties:
-      DefaultAction:
-        Allow: {}
-      Name: openc-lifs
-      Rules:
-        - Name: AWSManagedRulesAmazonIpRateBased
-          Action:
-            Block: {}
-          Priority: 1
-          Statement:
-            RateBasedStatement:
-              AggregateKeyType: IP
-              Limit: 500
-          VisibilityConfig:
-            CloudWatchMetricsEnabled: False
-            MetricName: openc-lifs-waf-AWSManagedRulesAmazonIpRateBased
-            SampledRequestsEnabled: False
-        - Name: AWSManagedRulesAmazonIpReputationList
-          OverrideAction:
-            None: {}
-          Priority: 2
-          Statement:
-            ManagedRuleGroupStatement:
-              VendorName: AWS
-              Name: AWSManagedRulesAmazonIpReputationList
-          VisibilityConfig:
-            CloudWatchMetricsEnabled: False
-            MetricName: openc-lifs-waf-AWSManagedRulesAmazonIpReputationList
-            SampledRequestsEnabled: False
-      Scope: REGIONAL
-      VisibilityConfig:
-        CloudWatchMetricsEnabled: False
-        MetricName: openc-lifs-waf
-        SampledRequestsEnabled: False
+      CertificateTransparencyLoggingPreference: ENABLED
+      DomainName: !FindInMap [Environment, !Ref Environment, DomainName]
+      ValidationMethod: DNS
 
-  WebAclAssociation:
-    Type: AWS::WAFv2::WebACLAssociation
+  CertificateV2:
+    Type: AWS::CertificateManager::Certificate
     Properties:
-      ResourceArn: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}::/restapis/${Api}/stages/production
-      WebACLArn: !GetAtt WebAcl.Arn
+      CertificateTransparencyLoggingPreference: ENABLED
+      DomainName: !FindInMap [Environment, !Ref Environment, SubDomainName]
+      ValidationMethod: DNS
+
+  ## TEMPORARY REMOVED FOR COST REDUCTION
+  # WebAcl:
+  #   Type: AWS::WAFv2::WebACL
+  #   Properties:
+  #     DefaultAction:
+  #       Allow: {}
+  #     Name: openc-lifs
+  #     Rules:
+  #       - Name: AWSManagedRulesAmazonIpRateBased
+  #         Action:
+  #           Block: {}
+  #         Priority: 1
+  #         Statement:
+  #           RateBasedStatement:
+  #             AggregateKeyType: IP
+  #             Limit: 500
+  #         VisibilityConfig:
+  #           CloudWatchMetricsEnabled: False
+  #           MetricName: openc-lifs-waf-AWSManagedRulesAmazonIpRateBased
+  #           SampledRequestsEnabled: False
+  #       - Name: AWSManagedRulesAmazonIpReputationList
+  #         OverrideAction:
+  #           None: {}
+  #         Priority: 2
+  #         Statement:
+  #           ManagedRuleGroupStatement:
+  #             VendorName: AWS
+  #             Name: AWSManagedRulesAmazonIpReputationList
+  #         VisibilityConfig:
+  #           CloudWatchMetricsEnabled: False
+  #           MetricName: openc-lifs-waf-AWSManagedRulesAmazonIpReputationList
+  #           SampledRequestsEnabled: False
+  #     Scope: REGIONAL
+  #     VisibilityConfig:
+  #       CloudWatchMetricsEnabled: False
+  #       MetricName: openc-lifs-waf
+  #       SampledRequestsEnabled: False
+
+  # WebAclAssociation:
+  #   Type: AWS::WAFv2::WebACLAssociation
+  #   Properties:
+  #     ResourceArn: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}::/restapis/${Api}/stages/v1
+  #     WebACLArn: !GetAtt WebAcl.Arn
+  ## END REMOVED FOR COST REDUCTION
 
 
   # ---- Storage ----
@@ -66,27 +83,27 @@ Resources:
   ModelBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !FindInMap [Environment, !Ref Environment, ModelStorageBucketName]
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+      BucketName: !FindInMap [Environment, !Ref Environment, ModelStorageBucketName]
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Function: !GetAtt ModelFunction.Arn
+            Event: s3:ObjectCreated:Put
       PublicAccessBlockConfiguration:
         BlockPublicAcls: True
         BlockPublicPolicy: True
         IgnorePublicAcls: True
         RestrictPublicBuckets: True
-      NotificationConfiguration:
-        LambdaConfigurations:
-          - Function: !GetAtt ModelFunction.Arn
-            Event: s3:ObjectCreated:Put
 
   ModelBucketLambdaInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:invokeFunction
-      Principal: s3.amazonaws.com
       FunctionName: !GetAtt ModelFunction.Arn
+      Principal: s3.amazonaws.com
       SourceArn: !GetAtt ModelBucket.Arn
 
   # ---- Rest API ----
@@ -94,8 +111,23 @@ Resources:
   Api:
     Type: AWS::Serverless::Api
     Properties:
-      StageName: production
+      StageName: v1
       Description: OpenC-LIFS API
+
+  ApiGatewayDomainName:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      CertificateArn: !Ref Certificate
+      DomainName: !FindInMap [Environment, !Ref Environment, DomainName]
+      SecurityPolicy: TLS_1_2
+
+  ApiGatewayBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Properties:
+      BasePath: openc-lifs
+      DomainName: !Ref ApiGatewayDomainName
+      RestApiId: !Ref Api
+      Stage: v1
 
   # ---- Functions ----
 

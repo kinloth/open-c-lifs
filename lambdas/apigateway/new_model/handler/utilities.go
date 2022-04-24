@@ -40,14 +40,14 @@ type ResponseError struct {
 	ErrorCode int    `json:"error_code"`
 }
 
-func genResponse(body string, statusCode int) (events.APIGatewayProxyResponse, error) {
+func genResponse(body string, statusCode int) (events.APIGatewayV2HTTPResponse, error) {
 	r := ResponseError{
 		Message:   body,
 		ErrorCode: statusCode,
 	}
 	marshalled, _ := json.Marshal(r)
 
-	return events.APIGatewayProxyResponse{
+	return events.APIGatewayV2HTTPResponse{
 		Body:       string(marshalled),
 		StatusCode: statusCode,
 	}, nil
